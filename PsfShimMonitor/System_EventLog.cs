@@ -26,7 +26,6 @@ namespace PsfMonitor
         #region DATA_SYSTEM
         public string ProviderName_SYSTEM = "System";
         private BackgroundWorker TraceBgWorker_SYSTEM = null;
-        private bool WaitingForEventStart_SYSTEM = true;
         #endregion
 
         #region BACKGROUNDWORKER_SYSTEM
@@ -59,91 +58,82 @@ namespace PsfMonitor
             Thread.CurrentThread.Name = "ETWReaderSYSTEM";
             //Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
 
-            try
+            string sQuery = "*[System/Level>0]";
+            EventLogQuery Q_Operational = new EventLogQuery(etwclass, PathType.LogName, sQuery);
+            EventBookmark Ev_OperationalBookmark = null;
+            EventLogReader R_Operational;
+            R_Operational = new EventLogReader(Q_Operational); // Walk through existing list to create a bookmark
+            R_Operational.Seek(System.IO.SeekOrigin.End, 0);
+            for (EventRecord eventInstance = R_Operational.ReadEvent();
+                    null != eventInstance;
+                    eventInstance = R_Operational.ReadEvent())
             {
-                string sQuery = "*[System/Level>0]";
-                EventLogQuery Q_Operational = new EventLogQuery(etwclass, PathType.LogName, sQuery);
-                EventBookmark Ev_OperationalBookmark = null;
-                EventLogReader R_Operational;
-                R_Operational = new EventLogReader(Q_Operational); // Walk through existing list to create a bookmark
-                R_Operational.Seek(System.IO.SeekOrigin.End, 0);
+                Ev_OperationalBookmark = eventInstance.Bookmark;
+            }
+            R_Operational.Dispose();
+
+            worker.ReportProgress(count++);
+
+            while (!worker.CancellationPending && !PleaseStopCollecting)
+            {
+                Thread.Sleep(1000);
+                R_Operational = new EventLogReader(Q_Operational, Ev_OperationalBookmark);
                 for (EventRecord eventInstance = R_Operational.ReadEvent();
                         null != eventInstance;
                         eventInstance = R_Operational.ReadEvent())
                 {
                     Ev_OperationalBookmark = eventInstance.Bookmark;
+                    try
+                    {
+                        DateTime et = eventInstance.TimeCreated.GetValueOrDefault();
+                        EventItem eItem = new EventItem((int)et.Ticks, et.Ticks, et.Ticks, et, eventInstance.ProcessId.ToString(), (int)eventInstance.ProcessId, (int)eventInstance.ThreadId,
+                                                        eventInstance.LogName, "System", eventInstance.Id.ToString(), eventInstance.LevelDisplayName, eventInstance.FormatDescription(), "");
+                        //SYSTEM_ITEM item = new SYSTEM_ITEM(eventInstance.LevelDisplayName, eventInstance.FormatDescription(), eventInstance.ProviderName, eventInstance.Id, eventInstance.ProcessId);
+                        worker.ReportProgress(count++, eItem);
+                    }
+                    catch
+                    {
+                        // app provider might be virtual or missing
+                        string leveldisplayname = "";
+                        string stuff = "Formatter not available. Details:";
+                        int ProcessId = -1;
+                        int ThreadId = -1;
+                        switch (eventInstance.Level)
+                        {
+                            case 1:
+                                leveldisplayname = "Critical";
+                                break;
+                            case 2:
+                                leveldisplayname = "Error";
+                                break;
+                            case 3:
+                                leveldisplayname = "Warning";
+                                break;
+                            case 4:
+                                leveldisplayname = "Information";
+                                break;
+                            default:
+                                break;
+                        }
+                        foreach (EventProperty p in eventInstance.Properties)
+                        {
+                            stuff += p.Value.ToString() + "  ";
+                        }
+                        if (eventInstance.ProcessId != null)
+                            ProcessId = (int)eventInstance.ProcessId;
+                        if (eventInstance.ThreadId != null)
+                            ThreadId = (int)eventInstance.ThreadId;
+                        DateTime et = eventInstance.TimeCreated.GetValueOrDefault();
+                        EventItem eItem = new EventItem((int)et.Ticks, et.Ticks, et.Ticks, et, eventInstance.ProcessId.ToString(), (int)eventInstance.ProcessId, (int)eventInstance.ThreadId,
+                                                        eventInstance.LogName, "System", eventInstance.Id.ToString(), leveldisplayname, stuff, "");
+                        worker.ReportProgress(count++, eItem);
+                    }
                 }
                 R_Operational.Dispose();
-                WaitingForEventStart_SYSTEM = false;
-
-                worker.ReportProgress(count++);
-
-                while (!worker.CancellationPending && !PleaseStopCollecting)
-                {
-                    Thread.Sleep(1000);
-                    R_Operational = new EventLogReader(Q_Operational, Ev_OperationalBookmark);
-                    for (EventRecord eventInstance = R_Operational.ReadEvent();
-                            null != eventInstance;
-                            eventInstance = R_Operational.ReadEvent())
-                    {
-                        Ev_OperationalBookmark = eventInstance.Bookmark;
-                        try
-                        {
-                            DateTime et = eventInstance.TimeCreated.GetValueOrDefault();
-                            EventItem eItem = new EventItem((int)et.Ticks, et.Ticks, et.Ticks, et, eventInstance.ProcessId.ToString(), (int)eventInstance.ProcessId, (int)eventInstance.ThreadId,
-                                                            eventInstance.LogName, "System", eventInstance.Id.ToString(), eventInstance.LevelDisplayName, eventInstance.FormatDescription(),"");
-                            //SYSTEM_ITEM item = new SYSTEM_ITEM(eventInstance.LevelDisplayName, eventInstance.FormatDescription(), eventInstance.ProviderName, eventInstance.Id, eventInstance.ProcessId);
-                            worker.ReportProgress(count++, eItem);
-                        }
-                        catch
-                        {
-                            // app provider might be virtual or missing
-                            string leveldisplayname = "";
-                            string stuff = "Formatter not available. Details:";
-                            int ProcessId = -1;
-                            int ThreadId = -1;
-                            switch (eventInstance.Level)
-                            {
-                                case 1:
-                                    leveldisplayname = "Critical";
-                                    break;
-                                case 2:
-                                    leveldisplayname = "Error";
-                                    break;
-                                case 3:
-                                    leveldisplayname = "Warning";
-                                    break;
-                                case 4:
-                                    leveldisplayname = "Information";
-                                    break;
-                                default:
-                                    break;
-                            }
-                            foreach (EventProperty p in eventInstance.Properties)
-                            {
-                                stuff += p.Value.ToString() + "  ";
-                            }
-                            if (eventInstance.ProcessId != null)
-                                ProcessId = (int)eventInstance.ProcessId;
-                            if (eventInstance.ThreadId != null)
-                                ThreadId = (int)eventInstance.ThreadId;
-                            DateTime et = eventInstance.TimeCreated.GetValueOrDefault();
-                            EventItem eItem = new EventItem((int)et.Ticks, et.Ticks, et.Ticks, et, eventInstance.ProcessId.ToString(), (int)eventInstance.ProcessId, (int)eventInstance.ThreadId,
-                                                            eventInstance.LogName, "System", eventInstance.Id.ToString(), leveldisplayname, stuff, "");
-                            worker.ReportProgress(count++, eItem);
-                        }
-                    }
-                    R_Operational.Dispose();
-                }
-            }
-            catch
-            {
-                WaitingForEventStart_SYSTEM = false;
             }
         } // ETWTraceInBackground_DoWork_SYSTEM()
         private void ETWTraceInBackground_ProgressChanged_SYSTEM(object sender, ProgressChangedEventArgs e)
         {
-            WaitingForEventStart_SYSTEM = false;
             if (e.UserState != null)
             {
                 EventItem eItem = (EventItem)e.UserState;

@@ -365,9 +365,9 @@ namespace winternl
                 UCHAR BirthVolumeId[16];
                 UCHAR BirthObjectId[16];
                 UCHAR DomainId[16];
-            } DUMMYSTRUCTNAME;
+            } BOGUSSTRUCTNAME;
             UCHAR ExtendedInfo[48];
-        } DUMMYUNIONNAME;
+        } BOGUSUNIONNAME;
     } FILE_OBJECTID_INFORMATION, *PFILE_OBJECTID_INFORMATION;
 
     typedef struct _FILE_QUOTA_INFORMATION

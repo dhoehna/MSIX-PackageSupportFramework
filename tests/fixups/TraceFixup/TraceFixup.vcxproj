@@ -23,10 +23,12 @@
     <ClCompile Include="DynamicLinkLibraryFixup.cpp" />
     <ClCompile Include="FileSystemFixup.cpp" />
     <ClCompile Include="main.cpp">
+      <!--
       <UndefinePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NONAMELESSUNION</UndefinePreprocessorDefinitions>
       <UndefinePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NONAMELESSUNION</UndefinePreprocessorDefinitions>
       <UndefinePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NONAMELESSUNION</UndefinePreprocessorDefinitions>
       <UndefinePreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NONAMELESSUNION</UndefinePreprocessorDefinitions>
+      -->
     </ClCompile>
     <ClCompile Include="PrivateProfileFixup.cpp" />
     <ClCompile Include="RegistryFixup.cpp" />
@@ -61,7 +63,7 @@
   <Import Project="$(MSBuildThisFileDirectory)\..\..\..\Common.Build.props" />
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>UMDF_USING_NTSTATUS;NONAMELESSUNION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UMDF_USING_NTSTATUS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
