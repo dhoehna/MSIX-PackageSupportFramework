@@ -223,7 +223,6 @@ namespace winternl
             BOOLEAN ReplaceIfExists;
             ULONG   Flags;
         } DUMMYUNIONNAME;
-        BOOLEAN ReplaceIfExists;
         HANDLE  RootDirectory;
         ULONG   FileNameLength;
         WCHAR   FileName[1];
